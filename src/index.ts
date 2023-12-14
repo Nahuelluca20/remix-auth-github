@@ -1,49 +1,62 @@
-import { SessionStorage } from "@remix-run/server-runtime";
-import {
-  AuthenticateOptions,
-  Strategy,
-  StrategyVerifyCallback,
-} from "remix-auth";
+import type { StrategyVerifyCallback } from "remix-auth";
+import { OAuth2Profile, OAuth2StrategyVerifyParams } from "remix-auth-oauth2";
+import { OAuth2Strategy } from "remix-auth-oauth2";
 
-/**
- * This interface declares what configuration the strategy needs from the
- * developer to correctly work.
- */
-export interface GithubOptions {
-  something: "You may need";
+export interface GithubStrategyOptions {
+  domain: string;
+  clientID: string;
+  clientSecret: string;
+  callbackURL: string;
 }
 
-/**
- * This interface declares what the developer will receive from the strategy
- * to verify the user identity in their system.
- */
-export interface GithubVerifyParams {
-  something: "Dev may need";
+export interface GithubExtraParams extends Record<string, string | number> {
+  id_token: string;
+  scope: string;
+  expires_in: 86_400;
+  token_type: "Bearer";
 }
 
-export class Github<User> extends Strategy<User, GithubVerifyParams> {
-  name = "change-me";
+export interface GithubProfile extends OAuth2Profile {
+  avatar_url: string;
+  organizations_url: string;
+  repos_ur: string;
+}
+export class Github<User> extends OAuth2Strategy<
+  User,
+  GithubProfile,
+  GithubExtraParams
+> {
+  name = "github";
+
+  private userInfoURL: string;
 
   constructor(
-    options: GithubOptions,
-    verify: StrategyVerifyCallback<User, GithubVerifyParams>
+    options: GithubStrategyOptions,
+    verify: StrategyVerifyCallback<
+      User,
+      OAuth2StrategyVerifyParams<GithubProfile, GithubExtraParams>
+    >
   ) {
-    super(verify);
-    // do something with the options here
+    super(
+      {
+        authorizationURL: `https://${options.domain}/authorize`,
+        tokenURL: `https://${options.domain}/oauth/token`,
+        clientID: options.clientID,
+        clientSecret: options.clientSecret,
+        callbackURL: options.callbackURL,
+      },
+      verify
+    );
+
+    this.userInfoURL = `https://${options.domain}/userinfo`;
+    this.scope = options.scope || "openid profile email";
   }
 
-  async authenticate(
-    request: Request,
-    sessionStorage: SessionStorage,
-    options: AuthenticateOptions
-  ): Promise<User> {
-    return await this.failure(
-      "Implement me!",
-      request,
-      sessionStorage,
-      options
-    );
-    // Uncomment me to do a success response
-    // this.success({} as User, request, sessionStorage, options);
+  protected authorizationParams() {
+    const urlSearchParams: Record<string, string> = {
+      scope: this.scope,
+    };
+
+    return new URLSearchParams(urlSearchParams);
   }
 }
