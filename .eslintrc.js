@@ -19,4 +19,10 @@ module.exports = {
     "unicorn/filename-case": "off",
     "unicorn/prevent-abbreviations": "off",
   },
+  "prettier/prettier": [
+    "error",
+    {
+      endOfLine: "auto",
+    },
+  ],
 };
